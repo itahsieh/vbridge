@@ -1,0 +1,66 @@
+#!/bin/bash
+#
+show_help () {
+  echo "Usage :"
+  echo "  $app [start | stop | version]"
+  exit 99
+}
+
+x86=`uname -a | grep x86`
+usr=`whoami`
+app=`basename $0`
+err="/tmp/$app.err"
+pid=`ps -ef | grep -v "grep" | grep "$app.x" | awk 'BEGIN {FS=" "}; {print $2}'`
+if [ "$usr" == "james" ]; then
+  lib="/opt/poco-1.9.0/lib"		# in test bed, x86
+  cfg="config.86"
+  home="/home/james/Projects/gcc/vbridge"
+else
+  lib="/usr/local/lib/poco"		# in ops mode, arm
+  cfg="config.ini"
+  home="/usr/local/bin"
+fi
+export LD_LIBRARY_PATH=$lib		# for share library
+
+case $1 in
+    start)
+    if [ "$pid" == "" ]; then
+      if [ -x $home/$app.x ]; then	# if app exist
+        echo "start process \"$app\""
+        nohup nice $home/$app.x $home/$cfg >/dev/null 2>$err &
+      else
+	echo "program \"$app.x\" was not found in $home"
+      fi
+    else
+      echo "process \"$app ($pid)\" is found in background"
+    fi
+    ;;
+    stop)
+    if [ "$pid" == "" ]; then
+      echo "process \"$app\" was not found in background"
+    else
+      kill $pid
+      echo "stop process \"$app\""
+    fi
+    ;;
+    storage)
+    if [ "$pid" == "" ]; then
+      echo "process \"$app\" was not found in background"
+    else
+      kill -s SIGUSR2 $pid
+      echo "change storage of process \"$app\""
+    fi
+    ;;
+    version)
+    $home/$app.x --version
+    ;;
+    *)
+    if [ "$pid" != "" ]; then
+      echo "process \"$app ($pid)\" is running"
+    else
+      show_help
+    fi
+    ;;
+esac
+
+exit 0

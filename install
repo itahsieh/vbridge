@@ -1,0 +1,98 @@
+#!/bin/bash
+#
+if [ "$1" == "" ] ; then
+  cuser="75280662@ip.hinet.net"
+else
+  cuser="$1"
+fi
+if [ "$2" == "" ] ; then
+  cpass="bayes850"
+else
+  cpass="$2"
+fi
+
+sdcard="/media/sd-mmcblk1p1"
+workplace="/usr/local"
+toolchain="/usr/lib/arm-linux-gnueabihf"
+home=`pwd`
+poco="arm-poco-1.9.0.tar.xz"
+stdc="libstdc++.so.6.0.22"
+vapp="vbridge"
+
+clear
+echo "install app ..."
+for binfile in bin/* ;
+do
+  cp -f $binfile $workplace/bin/
+done
+echo
+
+cd lib
+if [ -f "$poco" ] ; then
+  echo "install poco ..."
+  tar -Jxvf $poco
+  mv -f poco $workplace/lib/
+else
+  echo "package $poco not found"
+  exit 1
+fi
+echo
+
+if [ -f "$stdc" ] ; then
+  echo "update $stdc ..."
+  mv -f $stdc $toolchain
+  cd $toolchain
+  rm libstdc++.so.6
+  ln -s $stdc libstdc++.so.6
+else
+  echo "package $poco not found"
+  exit 2
+fi
+echo
+
+cd $home
+usermod -G sudo,users,tty,dialout moxa
+
+# ----- /etc/rc.local -----
+boot=`cat /etc/rc.local | grep $vapp`
+if [ "$boot" == "" ] ; then
+cat /etc/rc.local > /etc/rc.local.backup
+cat >> /etc/rc.local <<EOL
+
+cell_mgmt start APN=internet PIN=0000 Username="$cuser" Password="$cpass"
+cell_mgmt gps_on
+sleep 3
+
+ntpdate time.stdtime.gov.tw
+hwclock --systohc
+
+$workplace/bin/$vapp start
+EOL
+fi
+
+chmod +x /etc/rc.d/rc.local
+
+# ----- /etc/cron.daily/vbridge.cron -----
+cat > /etc/cron.daily/vbridge.cron <<EOL
+#!/bin/bash
+#
+
+ntpdate time.stdtime.gov.tw
+hwclock --systohc
+
+for before in 10 11 12 13 14 15;
+do
+# ----- use today or date ? -----
+# date=\`$workplace/bin/today -\$before\`
+  date=\`date -d"-\$before day" +"%Y%m%d"\`
+  data="$sdcard/\$date"
+  if [ -d \$data ] ; then
+    rm -fr \$data
+  fi
+done
+
+EOL
+
+chmod +x /etc/cron.daily/vbridge.cron
+
+exit 0

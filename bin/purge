@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+workplace=/usr/local/bin
+dataplace=/media/sd-mmcblk1p1
+
+export PATH=$workplace:$PATH
+
+for before in 10 11 12 13 14 15;
+do
+  date=`today "-$before"`
+  data="$dataplace/$date"
+  if [ -d $data ] ; then
+    rm -fr $data
+  fi
+done
